@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>스마일 콘테스트 😆</title>
+    <script src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #0a0a0a; 
+            color: #ffffff; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            padding: 20px; 
+        }
+        h1 { 
+            font-size: 2rem; 
+            font-weight: 700; 
+            letter-spacing: -0.5px;
+            margin-bottom: 8px; 
+        }
+        .target-goal { 
+            font-size: 0.95rem; 
+            color: #888888; 
+            margin-bottom: 24px; 
+        }
+        #score-container {
+            display: flex; 
+            gap: 16px; 
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 500px;
+        }
+        .score-box {
+            flex: 1;
+            text-align: center; 
+            background: #141414; 
+            border: 1px solid #262626;
+            padding: 16px; 
+            border-radius: 14px; 
+        }
+        .score-title { 
+            font-size: 0.8rem; 
+            color: #71717a; 
+            font-weight: 600; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .score-value { 
+            font-size: 2.5rem; 
+            font-weight: 800; 
+            color: #ffffff; 
+        }
+        #message { 
+            font-size: 1.1rem; 
+            margin-bottom: 20px; 
+            color: #a1a1aa; 
+            font-weight: 500; 
+            min-height: 28px;
+            text-align: center;
+        }
+        #video-container { 
+            position: relative;
+            border: 1px solid #262626; 
+            border-radius: 16px; 
+            overflow: hidden;
+            background-color: #000000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 500px;
+            max-width: 100%;
+        }
+        video { 
+            width: 100%; 
+            height: auto;
+            display: block;
+            transform: scaleX(-1); 
+        }
+    </style>
+</head>
+<body>
+    <h1>SMILE CONTEST 😆</h1>
+    <div class="target-goal">목표: 배잡고 깔깔 웃어서 100점 달성하기</div>
+    
+    <div id="score-container">
+        <div class="score-box">
+            <div class="score-title">현재 점수</div>
+            <div class="score-value" id="score">0</div>
+        </div>
+        <div class="score-box">
+            <div class="score-title">최고 기록</div>
+            <div class="score-value" id="max-score">0</div>
+        </div>
+    </div>
+
+    <div id="message">AI 두뇌를 불러오는 중... 🧠</div>
+    
+    <div id="video-container">
+        <video id="video" autoplay muted playsinline></video>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const scoreElement = document.getElementById('score');
+        const maxScoreElement = document.getElementById('max-score');
+        const messageElement = document.getElementById('message');
+        
+        let maxScore = 0;
+        const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+
+        // 1. AI 모델 로드
+        Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+            faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
+        ]).then(startVideo).catch(err => {
+            messageElement.innerText = "앗! AI를 불러오지 못했어요. 새로고침 해주세요 ⚠️";
+            console.error(err);
+        });
+
+        // 2. 카메라 실행
+        function startVideo() {
+            messageElement.innerText = "카메라 권한을 '허용'해주세요 📷";
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                    messageElement.innerText = "준비 완료! 배꼽 잡고 깔깔 웃어보세요 😆";
+                })
+                .catch(err => {
+                    messageElement.innerText = "카메라를 켤 수 없습니다 🚫";
+                    console.error(err);
+                });
+        }
+
+        // 3. 표정 인식 및 점수 산정
+        video.addEventListener('play', () => {
+            setInterval(async () => {
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+                
+                if (detections.length > 0) {
+                    const happyLevel = detections[0].expressions.happy;
+                    
+                    let currentScore = 0;
+                    if (happyLevel > 0.3) {
+                        currentScore = Math.floor(Math.pow((happyLevel - 0.3) / 0.7, 2.5) * 100);
+                    }
+
+                    scoreElement.innerText = currentScore;
+
+                    if (currentScore > maxScore) {
+                        maxScore = currentScore;
+                        maxScoreElement.innerText = maxScore;
+                    }
+
+                    if (currentScore >= 100) {
+                        messageElement.innerText = "🎉 100점 달성! 진짜 박장대소 미션 성공! 🎉";
+                    } else if (currentScore >= 70) {
+                        messageElement.innerText = "🔥 조금만 더!! 입 더 벌리고 깔깔 웃으세요!";
+                    } else if (currentScore >= 30) {
+                        messageElement.innerText = "🙂 미소 정도로는 부족합니다! 더 크게!";
+                    } else {
+                        messageElement.innerText = "😐 정색 중... 활짝 웃어주세요!";
+                    }
+                } else {
+                    messageElement.innerText = "카메라 정면으로 얼굴을 보여주세요 👀";
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>
